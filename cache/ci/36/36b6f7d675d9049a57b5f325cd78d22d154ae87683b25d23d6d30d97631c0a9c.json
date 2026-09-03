@@ -1,0 +1,23 @@
+{
+ "key": "36b6f7d675d9049a57b5f325cd78d22d154ae87683b25d23d6d30d97631c0a9c",
+ "request": {
+  "model": "demo",
+  "params": {
+   "max_tokens": 200,
+   "temperature": 0.0
+  },
+  "prompt": "Extract the following fields from the product description and reply with a single\nJSON object and nothing else.\n\nFields:\n- \"name\": the product name as written (string)\n- \"price\": the numeric price without currency symbols or thousands separators (number, or null if no price is given)\n- \"currency\": three-letter ISO code such as USD, EUR, GBP, JPY (string, or null if no price is given)\n- \"in_stock\": true if the text says the item is available now, false if it says it is out of stock, backordered, or discontinued (boolean)\n\nDescription:\nDiscontinued: Vela running shoes, size 9. Last listed at 89.00 CAD.",
+  "provider": "fake"
+ },
+ "response": {
+  "completion_tokens": 20,
+  "cost_usd": 0.0,
+  "latency_ms": 1.0,
+  "prompt_tokens": 151,
+  "raw": {
+   "model": "demo",
+   "provider": "fake"
+  },
+  "text": "{\"name\": \"Vela running shoes\", \"price\": 89.0, \"currency\": \"CAD\", \"in_stock\": false}"
+ }
+}

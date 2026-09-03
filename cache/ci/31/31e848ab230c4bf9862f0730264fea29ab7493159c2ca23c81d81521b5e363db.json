@@ -1,0 +1,23 @@
+{
+ "key": "31e848ab230c4bf9862f0730264fea29ab7493159c2ca23c81d81521b5e363db",
+ "request": {
+  "model": "demo",
+  "params": {
+   "max_tokens": 200,
+   "temperature": 0.0
+  },
+  "prompt": "Extract the following fields from the product description and reply with a single\nJSON object and nothing else.\n\nFields:\n- \"name\": the product name as written (string)\n- \"price\": the numeric price without currency symbols or thousands separators (number, or null if no price is given)\n- \"currency\": three-letter ISO code such as USD, EUR, GBP, JPY (string, or null if no price is given)\n- \"in_stock\": true if the text says the item is available now, false if it says it is out of stock, backordered, or discontinued (boolean)\n\nDescription:\nThe Nimbus 2 wireless mouse is currently out of stock. Price when available: 29.00 EUR.",
+  "provider": "fake"
+ },
+ "response": {
+  "completion_tokens": 18,
+  "cost_usd": 0.0,
+  "latency_ms": 1.0,
+  "prompt_tokens": 156,
+  "raw": {
+   "model": "demo",
+   "provider": "fake"
+  },
+  "text": "{\"name\": \"Nimbus 2\", \"price\": 29.0, \"currency\": \"EUR\", \"in_stock\": false}"
+ }
+}

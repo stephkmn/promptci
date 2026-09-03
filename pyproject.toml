@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "promptci"
+version = "0.1.0"
+description = "Regression testing for LLM applications: YAML eval suites, cached runs, statistical comparison, judge validation, CI gate."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [{ name = "[YOUR NAME]" }]
+keywords = ["llm", "evaluation", "regression-testing", "ci", "prompts"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "typer>=0.12",
+    "pydantic>=2.5",
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+    "httpx>=0.27",
+    "rich>=13.0",
+    "jsonschema>=4.20",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+]
+anthropic = ["anthropic>=0.30"]
+datasets = ["datasets>=2.18", "scipy>=1.11"]
+
+[project.scripts]
+promptci = "promptci.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/[YOUR_GITHUB]/promptci"
+Issues = "https://github.com/[YOUR_GITHUB]/promptci/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/promptci"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/promptci", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+extend-exclude = ["examples/humaneval/data", "results"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = ["B008"]  # typer.Option in defaults is the documented Typer pattern
+
+[tool.ruff.lint.isort]
+known-first-party = ["promptci"]

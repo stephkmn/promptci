@@ -1,0 +1,71 @@
+# HumanEval: function completion graded by running the reference tests.
+#
+# Uses the code_exec grader, which is implemented in milestone M3. Until then
+# `promptci validate` will load this suite but `promptci run` fails at grading.
+#
+# Data: python examples/humaneval/download.py   (writes cases.jsonl, 164 items)
+# Then edit `dataset:` below or pass --limit to run a subset.
+#
+# Each case's inputs carry HumanEval's fields: prompt (function signature and
+# docstring), test (the check() function), entry_point (function name). The
+# grader assembles prompt + model output + test and runs it in a subprocess.
+
+name: humaneval
+description: HumanEval function completion, pass@1 via subprocess execution.
+
+prompt: |
+  Complete the following Python function. Reply with only the function body
+  (the code that goes under the signature), no explanation, no markdown fences.
+
+  {{ inputs.prompt }}
+
+params:
+  temperature: 0.0
+  max_tokens: 512
+  stop: ["\ndef ", "\nclass ", "\nif __name__", "\nprint("]
+
+grader:
+  type: code_exec
+  timeout_s: 10
+  memory_mb: 512
+
+compare:
+  regression_threshold: 0.03
+
+dataset: cases.jsonl
+
+cases:
+  - id: HumanEval_0
+    inputs:
+      entry_point: has_close_elements
+      prompt: |
+        from typing import List
+
+
+        def has_close_elements(numbers: List[float], threshold: float) -> bool:
+            """ Check if in given list of numbers, are any two numbers closer to each other than
+            given threshold.
+            >>> has_close_elements([1.0, 2.0, 3.0], 0.5)
+            False
+            >>> has_close_elements([1.0, 2.8, 3.0, 4.0, 5.0, 2.0], 0.3)
+            True
+            """
+      test: |
+
+
+        METADATA = {
+            'author': 'jt',
+            'dataset': 'test'
+        }
+
+
+        def check(candidate):
+            assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.3) == True
+            assert candidate([1.0, 2.0, 3.9, 4.0, 5.0, 2.2], 0.05) == False
+            assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.95) == True
+            assert candidate([1.0, 2.0, 5.9, 4.0, 5.0], 0.8) == False
+            assert candidate([1.0, 2.0, 3.0, 4.0, 5.0, 2.0], 0.1) == True
+            assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 1.0) == True
+            assert candidate([1.1, 2.2, 3.1, 4.1, 5.1], 0.5) == False
+    expected: null
+    tags: [inline_sample]

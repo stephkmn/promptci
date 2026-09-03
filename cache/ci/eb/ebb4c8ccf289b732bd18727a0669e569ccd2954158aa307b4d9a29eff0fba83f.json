@@ -1,0 +1,23 @@
+{
+ "key": "ebb4c8ccf289b732bd18727a0669e569ccd2954158aa307b4d9a29eff0fba83f",
+ "request": {
+  "model": "demo",
+  "params": {
+   "max_tokens": 200,
+   "temperature": 0.0
+  },
+  "prompt": "Extract the following fields from the product description and reply with a single\nJSON object and nothing else.\n\nFields:\n- \"name\": the product name as written (string)\n- \"price\": the numeric price without currency symbols or thousands separators (number, or null if no price is given)\n- \"currency\": three-letter ISO code such as USD, EUR, GBP, JPY (string, or null if no price is given)\n- \"in_stock\": true if the text says the item is available now, false if it says it is out of stock, backordered, or discontinued (boolean)\n\nDescription:\nBrew & Co. pour-over kettle 1.0L, AUD $79.00. Yes, we have it in stock.",
+  "provider": "fake"
+ },
+ "response": {
+  "completion_tokens": 22,
+  "cost_usd": 0.0,
+  "latency_ms": 1.0,
+  "prompt_tokens": 152,
+  "raw": {
+   "model": "demo",
+   "provider": "fake"
+  },
+  "text": "{\"name\": \"Brew & Co. pour-over kettle\", \"price\": 79.0, \"currency\": \"AUD\", \"in_stock\": true}"
+ }
+}

@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Secrets. Never commit keys. Use environment variables.
+.env
+.env.*
+
+# Downloaded datasets (the download scripts recreate them)
+examples/*/cases.jsonl
+examples/humaneval/data/
+
+# Results database is committed on purpose when it backs a reported number
+# (see CLAUDE.md), but journal/lock files are not.
+results/*.db-journal
+results/*.db-wal
+results/*.db-shm
+
+# Caches other than the committed CI cache
+cache/*
+!cache/ci/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

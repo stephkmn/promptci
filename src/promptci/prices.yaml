@@ -1,0 +1,34 @@
+# USD per 1M tokens. Verify against the provider's pricing page before trusting
+# any cost number in a report; prices change and free tiers exist.
+# `checked` is the date the row was last verified. Update it when you edit a row.
+#
+# Local providers (ollama, fake, replay) are always $0 and do not appear here.
+models:
+  openai/gpt-4o-mini:
+    input: 0.15
+    output: 0.60
+    checked: "[verify]"
+  openai/gpt-4o:
+    input: 2.50
+    output: 10.00
+    checked: "[verify]"
+  anthropic/claude-3-5-haiku-latest:
+    input: 0.80
+    output: 4.00
+    checked: "[verify]"
+  anthropic/claude-sonnet-4-20250514:
+    input: 3.00
+    output: 15.00
+    checked: "[verify]"
+  groq/llama-3.1-8b-instant:
+    input: 0.05
+    output: 0.08
+    checked: "[verify]"
+  groq/llama-3.3-70b-versatile:
+    input: 0.59
+    output: 0.79
+    checked: "[verify]"
+  openrouter/meta-llama/llama-3.1-8b-instruct:
+    input: 0.02
+    output: 0.03
+    checked: "[verify]"

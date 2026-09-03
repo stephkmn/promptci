@@ -1,0 +1,146 @@
+# json_extract: structured extraction from short product descriptions.
+#
+# Grader: the output must parse as JSON, validate against the schema, and then
+# every field in `expected` must match exactly (strings compared after strip,
+# lower, collapse whitespace; numbers as floats). Score is the fraction of
+# matching fields, so a response that gets 3 of 4 fields scores 0.75 and does
+# not pass.
+#
+# 12 cases are here. Milestone M1 asks you to write 60 in cases.jsonl (see
+# docs/milestones/M1_core_runner.md). Keep the hand-written ones varied: prices
+# with commas, currencies other than USD, stock stated indirectly, distractor
+# numbers (weights, model numbers), and a few where a field is genuinely absent
+# and the expected value is null.
+#
+# `fake_responses` is for the zero-setup demo only (`--model fake/demo` or
+# `--model replay/any`). Real providers ignore it.
+
+name: json_extract
+description: Extract name, price, currency and stock status from a product blurb as JSON.
+
+prompt: |
+  Extract the following fields from the product description and reply with a single
+  JSON object and nothing else.
+
+  Fields:
+  - "name": the product name as written (string)
+  - "price": the numeric price without currency symbols or thousands separators (number, or null if no price is given)
+  - "currency": three-letter ISO code such as USD, EUR, GBP, JPY (string, or null if no price is given)
+  - "in_stock": true if the text says the item is available now, false if it says it is out of stock, backordered, or discontinued (boolean)
+
+  Description:
+  {{ inputs.text }}
+
+params:
+  temperature: 0.0
+  max_tokens: 200
+
+grader:
+  type: json_schema
+  compare_expected: true
+  schema:
+    type: object
+    required: [name, price, currency, in_stock]
+    properties:
+      name: { type: string }
+      price: { type: [number, "null"] }
+      currency: { type: [string, "null"] }
+      in_stock: { type: boolean }
+    additionalProperties: false
+
+compare:
+  regression_threshold: 0.03
+
+cases:
+  - id: c001
+    inputs:
+      text: "Aurora Desk Lamp, brushed steel, $49.99. Ships today."
+    expected: { name: "Aurora Desk Lamp", price: 49.99, currency: USD, in_stock: true }
+    tags: [simple, usd]
+
+  - id: c002
+    inputs:
+      text: "The Nimbus 2 wireless mouse is currently out of stock. Price when available: 29.00 EUR."
+    expected: { name: "Nimbus 2", price: 29.0, currency: EUR, in_stock: false }
+    tags: [out_of_stock, eur]
+
+  - id: c003
+    inputs:
+      text: "Trailhead 65L backpack. £1,249.50. In stock, 3 left."
+    expected: { name: "Trailhead 65L", price: 1249.5, currency: GBP, in_stock: true }
+    tags: [thousands_separator, gbp]
+
+  - id: c004
+    inputs:
+      text: "Sakura ceramic teapot, 700 ml capacity. ¥4,800. Available for immediate dispatch."
+    expected: { name: "Sakura ceramic teapot", price: 4800, currency: JPY, in_stock: true }
+    tags: [distractor_number, jpy]
+
+  - id: c005
+    inputs:
+      text: "Model KX-220 standing desk. Weight 38 kg. Backordered until further notice. USD 599."
+    expected: { name: "KX-220 standing desk", price: 599, currency: USD, in_stock: false }
+    tags: [distractor_number, backordered]
+
+  - id: c006
+    inputs:
+      text: "Meridian noise-cancelling headphones. Contact sales for pricing. In stock."
+    expected: { name: "Meridian noise-cancelling headphones", price: null, currency: null, in_stock: true }
+    tags: [null_price]
+
+  - id: c007
+    inputs:
+      text: "Pico USB-C hub (7 ports) now only $19.95, was $34.95. Ready to ship."
+    expected: { name: "Pico USB-C hub", price: 19.95, currency: USD, in_stock: true }
+    tags: [two_prices]
+
+  - id: c008
+    inputs:
+      text: "Discontinued: Vela running shoes, size 9. Last listed at 89.00 CAD."
+    expected: { name: "Vela running shoes", price: 89.0, currency: CAD, in_stock: false }
+    tags: [discontinued, cad]
+
+  - id: c009
+    inputs:
+      text: "Granite 12-inch cast iron skillet, 45 dollars, free shipping, ships in 24 hours."
+    expected: { name: "Granite 12-inch cast iron skillet", price: 45, currency: USD, in_stock: true }
+    tags: [spelled_currency]
+
+  - id: c010
+    inputs:
+      text: "Orbit smart plug (2-pack): 24,99 € · auf Lager"
+    expected: { name: "Orbit smart plug", price: 24.99, currency: EUR, in_stock: true }
+    tags: [decimal_comma, german, eur]
+
+  - id: c011
+    inputs:
+      text: "Introducing the Halcyon mechanical keyboard. Pre-orders open; units ship next quarter. $139."
+    expected: { name: "Halcyon mechanical keyboard", price: 139, currency: USD, in_stock: false }
+    tags: [preorder, ambiguous]
+
+  - id: c012
+    inputs:
+      text: "Brew & Co. pour-over kettle 1.0L, AUD $79.00. Yes, we have it in stock."
+    expected: { name: "Brew & Co. pour-over kettle", price: 79.0, currency: AUD, in_stock: true }
+    tags: [aud, distractor_number]
+
+# Deterministic replies for the demo. Mostly right, with realistic mistakes:
+# c005 picks the weight as the price, c010 misreads the decimal comma,
+# c011 calls a pre-order in stock, c007 wraps the JSON in prose (still parses).
+fake_responses:
+  c001: '{"name": "Aurora Desk Lamp", "price": 49.99, "currency": "USD", "in_stock": true}'
+  c002: '{"name": "Nimbus 2", "price": 29.0, "currency": "EUR", "in_stock": false}'
+  c003: '{"name": "Trailhead 65L", "price": 1249.5, "currency": "GBP", "in_stock": true}'
+  c004: '{"name": "Sakura ceramic teapot", "price": 4800, "currency": "JPY", "in_stock": true}'
+  c005: '{"name": "KX-220 standing desk", "price": 38, "currency": "USD", "in_stock": false}'
+  c006: '{"name": "Meridian noise-cancelling headphones", "price": null, "currency": null, "in_stock": true}'
+  c007: |
+    Here is the extracted JSON:
+    ```json
+    {"name": "Pico USB-C hub", "price": 19.95, "currency": "USD", "in_stock": true}
+    ```
+  c008: '{"name": "Vela running shoes", "price": 89.0, "currency": "CAD", "in_stock": false}'
+  c009: '{"name": "Granite 12-inch cast iron skillet", "price": 45, "currency": "USD", "in_stock": true}'
+  c010: '{"name": "Orbit smart plug", "price": 2499, "currency": "EUR", "in_stock": true}'
+  c011: '{"name": "Halcyon mechanical keyboard", "price": 139, "currency": "USD", "in_stock": true}'
+  c012: '{"name": "Brew & Co. pour-over kettle", "price": 79.0, "currency": "AUD", "in_stock": true}'

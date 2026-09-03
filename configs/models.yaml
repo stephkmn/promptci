@@ -1,0 +1,19 @@
+# Model strings used in the milestone experiments. One place to change them.
+#
+# Pick the two Ollama models after checking your hardware:
+#   8 GB RAM/VRAM:  qwen2.5:3b and llama3.2:3b
+#   16 GB:          qwen2.5:7b and llama3.1:8b  (or llama3.2:3b as the small one)
+#   32 GB+:         qwen2.5:14b as the "stronger judge" in M4
+# Pull with `ollama pull <name>`.
+
+candidates:
+  primary: ollama/qwen2.5:7b
+  secondary: ollama/llama3.2:3b
+
+judges:
+  small: ollama/qwen2.5:7b
+  # Fill in when you have access. Groq and OpenRouter have free tiers; check limits.
+  strong: "[choose: groq/llama-3.3-70b-versatile, openrouter/..., or anthropic/...]"
+
+# Used by M5's eval.yml. Must be a model whose cache entries are committed.
+ci_replay: replay/ollama/qwen2.5:7b

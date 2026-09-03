@@ -1,0 +1,95 @@
+# summarize_judge: summarization graded by an LLM judge with a rubric.
+#
+# Uses the llm_judge grader, implemented in milestone M4. `promptci validate`
+# loads this suite now; `promptci run` fails at grading until M4.
+#
+# The judge model must be different from the candidate model. A model grading its
+# own output is known to be lenient toward its own style. The judge's agreement
+# with humans is measured in M4 (docs/milestones/M4_judge_validation.md); until
+# that number exists, scores from this suite are not evidence of anything.
+#
+# Source texts below are short, original paragraphs written for this example.
+# For a larger set, pull articles from a public summarization dataset (for
+# example the `abisee/cnn_dailymail` test split) and write them to cases.jsonl.
+
+name: summarize_judge
+description: Two-sentence summaries of short passages, scored 1-5 by an LLM judge.
+
+prompt: |
+  Summarize the passage below in at most two sentences. Keep every number and
+  proper noun that matters. Do not add information that is not in the passage.
+
+  Passage:
+  {{ inputs.text }}
+
+params:
+  temperature: 0.0
+  max_tokens: 150
+
+grader:
+  type: llm_judge
+  judge_model: ollama/qwen2.5:7b
+  pass_threshold: 4
+  rubric: |
+    You are grading a summary of a passage. Score it from 1 to 5.
+    5: covers every key fact, adds nothing, at most two sentences, fluent.
+    4: covers the key facts with one minor omission or a slightly awkward sentence.
+    3: misses one important fact, or adds one unsupported detail, or exceeds two sentences.
+    2: misses most key facts or adds several unsupported details.
+    1: wrong, empty, or about something else.
+    Write one sentence of reasoning, then a final line exactly of the form "Score: N".
+
+cases:
+  - id: s001
+    inputs:
+      text: >
+        The city council voted 7 to 2 on Tuesday to extend the downtown bike-lane
+        pilot for another 18 months. The pilot, which began in March 2025, covers
+        4.2 miles of Ocean Boulevard. Council member Reyes, who voted no, said the
+        lanes had reduced parking revenue by about 11 percent. Supporters cited a
+        city report showing a 30 percent drop in cyclist injuries on the corridor.
+    expected: null
+    tags: [civic]
+
+  - id: s002
+    inputs:
+      text: >
+        Researchers at a university lab reported that a new battery cathode made
+        from sodium and iron retained 92 percent of its capacity after 1,000
+        charge cycles. Lithium cathodes in the same test retained 88 percent. The
+        team cautioned that the sodium cells stored about 20 percent less energy
+        per kilogram, which matters for cars but less for stationary storage.
+    expected: null
+    tags: [science]
+
+  - id: s003
+    inputs:
+      text: >
+        The library will close its Maple Street branch for renovation from
+        November 3 through the end of February. During the closure, holds can be
+        picked up at the Central branch, and the bookmobile will stop at Maple
+        Street Park on Saturdays from 10 to 2. Staff will keep their positions.
+    expected: null
+    tags: [notice]
+
+  - id: s004
+    inputs:
+      text: >
+        A regional airline said it would cancel roughly 6 percent of its flights
+        in October, citing a shortage of certified mechanics. The cuts fall mainly
+        on routes with fewer than 60 passengers per flight. Customers on cancelled
+        flights will be rebooked at no charge or refunded. The airline expects
+        to restore the schedule by December after 40 new hires complete training.
+    expected: null
+    tags: [business]
+
+  - id: s005
+    inputs:
+      text: >
+        In the study, 240 adults with mild insomnia were assigned either a
+        six-week online sleep program or a reading list. After six weeks, the
+        program group fell asleep 19 minutes faster on average and reported
+        fewer awakenings. The effect on total sleep time was small and not
+        statistically significant. The authors called for a larger trial.
+    expected: null
+    tags: [health]

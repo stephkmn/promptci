@@ -1,0 +1,23 @@
+{
+ "key": "69aea9c99238f599904ddd14f98b50a4909daa60cb64d2235a9d289a96e467a7",
+ "request": {
+  "model": "demo",
+  "params": {
+   "max_tokens": 200,
+   "temperature": 0.0
+  },
+  "prompt": "Extract the following fields from the product description and reply with a single\nJSON object and nothing else.\n\nFields:\n- \"name\": the product name as written (string)\n- \"price\": the numeric price without currency symbols or thousands separators (number, or null if no price is given)\n- \"currency\": three-letter ISO code such as USD, EUR, GBP, JPY (string, or null if no price is given)\n- \"in_stock\": true if the text says the item is available now, false if it says it is out of stock, backordered, or discontinued (boolean)\n\nDescription:\nOrbit smart plug (2-pack): 24,99 € · auf Lager",
+  "provider": "fake"
+ },
+ "response": {
+  "completion_tokens": 20,
+  "cost_usd": 0.0,
+  "latency_ms": 1.0,
+  "prompt_tokens": 146,
+  "raw": {
+   "model": "demo",
+   "provider": "fake"
+  },
+  "text": "{\"name\": \"Orbit smart plug\", \"price\": 2499, \"currency\": \"EUR\", \"in_stock\": true}"
+ }
+}
