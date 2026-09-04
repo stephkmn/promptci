@@ -155,6 +155,12 @@ def run(
     except ValueError as e:
         _fail(str(e))
 
+    # Captured before anything below touches the working tree. `ResultStore` creates the
+    # SQLite file, and a default `--db` puts it inside the repo, so computing the sha
+    # afterwards makes the run's own artifact show up in `git status` and every row gets
+    # recorded as `-dirty`. Read once, here, and pass the same value down both branches.
+    sha = git_sha()
+
     if cache_dir is None:
         cache_dir = _default_cache_dir(model)
     provider, model_name = _build_provider(model, suite, cache_dir, write_cache=not no_cache_write)
@@ -169,7 +175,7 @@ def run(
     async def _go():
         if quiet or json_out:
             return await runner.run(
-                suite, model_string=model, suite_path=str(suite_path), label=label, sha=git_sha()
+                suite, model_string=model, suite_path=str(suite_path), label=label, sha=sha
             )
         with Progress(
             TextColumn("[bold]{task.description}"),
@@ -184,7 +190,7 @@ def run(
                 model_string=model,
                 suite_path=str(suite_path),
                 label=label,
-                sha=git_sha(),
+                sha=sha,
                 on_result=lambda _rec: progress.advance(task),
             )
 

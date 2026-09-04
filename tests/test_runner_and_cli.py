@@ -167,6 +167,60 @@ def test_committed_cache_has_one_provider_per_prompt():
     assert not ambiguous, f"prompts recorded by more than one model: {ambiguous}"
 
 
+def test_run_records_a_clean_sha_when_the_db_lives_in_the_repo(tmp_path, monkeypatch):
+    """The run's own SQLite file must not make the run look like it came from a dirty tree.
+
+    `git_sha` shells out to `git status --porcelain`, so it reports whatever is on disk
+    when it is called. `ResultStore` creates the database, and `--db` defaults to a path
+    inside the repo, so reading the sha after building the store recorded `<sha>-dirty`
+    on every row of an otherwise clean checkout. Provenance has to describe the code that
+    produced the run, not the artifact the run just wrote.
+    """
+    git = shutil.which("git")
+    if git is None:
+        pytest.skip("git not installed")
+
+    repo = tmp_path / "repo"
+    (repo / "examples" / "json_extract").mkdir(parents=True)
+    shutil.copy(EXAMPLES / "json_extract" / "suite.yaml", repo / "examples" / "json_extract")
+    shutil.copytree(REPO / "cache" / "ci", repo / "cache" / "ci")
+
+    def run_git(*args: str) -> None:
+        subprocess.run([git, *args], cwd=repo, check=True, capture_output=True)
+
+    run_git("init", "-q")
+    run_git("config", "user.email", "t@example.invalid")
+    run_git("config", "user.name", "t")
+    run_git("add", "-A")
+    run_git("commit", "-qm", "fixture")
+    head = subprocess.run(
+        [git, "rev-parse", "--short", "HEAD"], cwd=repo, check=True, capture_output=True, text=True
+    ).stdout.strip()
+
+    # `git_sha` reads the process working directory, so the CLI has to run from the repo.
+    monkeypatch.chdir(repo)
+    db = repo / "results" / "promptci.db"
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "examples/json_extract/suite.yaml",
+            "--model",
+            "replay/any",
+            "--cache-dir",
+            "cache/ci",
+            "--db",
+            str(db),
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert db.exists(), "the run should have created the database inside the repo"
+
+    with ResultStore(db) as store:
+        assert store.list_runs()[0].git_sha == head
+
+
 def test_cli_replay_miss_exits_nonzero(tmp_path):
     runner = CliRunner()
     result = runner.invoke(
