@@ -24,7 +24,8 @@ results/*.db-journal
 results/*.db-wal
 results/*.db-shm
 
-# Caches other than the committed CI cache
+# Caches other than the committed CI cache. cache/local is where every provider that
+# can reach a real model caches by default, so real responses stay out of git.
 cache/*
 !cache/ci/
 

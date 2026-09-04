@@ -81,19 +81,32 @@ Python 3.11 or newer.
 git clone https://github.com/[YOUR_GITHUB]/promptci && cd promptci
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest -q                                              # 56 passed, 5 xfailed (planned work)
+pytest -q                                              # 62 passed, 5 xfailed (planned work)
 promptci run examples/json_extract/suite.yaml --model replay/any
 ```
 
 The last command replays 12 cases from `cache/ci/` in under a second and prints a
-summary table. The cached replies come from a deterministic fake provider, so this
-is a demo of the pipeline, not a measurement of any model. To measure a model:
+summary table. `cache/ci/` is the committed replay fixture and holds fake-provider
+replies only, so this is a demo of the pipeline, not a measurement of any model. To
+measure a model:
 
 ```bash
 ollama pull qwen2.5:7b
 promptci run examples/json_extract/suite.yaml --model ollama/qwen2.5:7b
 promptci summarize <run_id>
 promptci runs
+```
+
+The cache directory defaults by provider: `replay/...` reads `cache/ci/`, and anything
+that can reach a real model writes to `cache/local/`, which is gitignored. They stay
+separate because `replay/any` resolves a prompt by finding the one entry that recorded
+it, so a real response sitting beside the fixture's makes that lookup ambiguous and the
+zero-setup demo fails. Pass `--cache-dir` to override either default — replaying a run
+you recorded locally needs it, since the entries are not in the fixture:
+
+```bash
+promptci run examples/json_extract/suite.yaml \
+  --model replay/ollama/qwen2.5:7b --cache-dir cache/local
 ```
 
 ## Writing a suite

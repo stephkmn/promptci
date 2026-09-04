@@ -6,8 +6,14 @@
     promptci compare RUN_A RUN_B                     paired comparison with CI
     promptci validate SUITE                          check a suite file loads
 
-Every completion goes through the disk cache (default ``cache/ci``). Commit that
-directory: it is what lets CI replay a run with ``--model replay/...`` for free.
+Every completion goes through the disk cache. Which directory depends on the provider
+unless ``--cache-dir`` says otherwise: ``replay/...`` reads ``cache/ci``, the committed
+fixture that lets CI and the zero-setup demo replay a run for free, while anything that
+can reach a real model writes to ``cache/local``, which is gitignored.
+
+That split exists because ``replay/any`` resolves a prompt by finding the single entry
+that recorded it. A real model's response sitting next to the fixture's makes that
+lookup ambiguous and breaks the demo, so the two never share a directory.
 """
 
 from __future__ import annotations
@@ -45,7 +51,11 @@ app = typer.Typer(
 console = Console()
 err_console = Console(stderr=True)
 
-DEFAULT_CACHE = "cache/ci"
+# Two cache defaults, chosen by provider in `_default_cache_dir`. `replay/` reads the
+# committed fixture; anything that can call a model writes to the gitignored directory
+# so real responses never land in `cache/ci`.
+DEFAULT_CACHE_REPLAY = "cache/ci"
+DEFAULT_CACHE_LOCAL = "cache/local"
 DEFAULT_DB = "results/promptci.db"
 
 
@@ -67,6 +77,19 @@ def _main(
 def _fail(msg: str, code: int = 1) -> None:
     err_console.print(f"[red]error:[/red] {msg}")
     raise typer.Exit(code)
+
+
+def _default_cache_dir(model_string: str) -> Path:
+    """Cache directory to use when `--cache-dir` was not given.
+
+    `replay/...` serves from the committed fixture, so the zero-setup demo works in a
+    fresh clone with no flags. Every other provider can reach a real model, and its
+    responses must not join the fixture: a prompt recorded by two models makes
+    `replay/any` ambiguous and breaks the demo.
+    """
+    if model_string.startswith("replay/"):
+        return Path(DEFAULT_CACHE_REPLAY)
+    return Path(DEFAULT_CACHE_LOCAL)
 
 
 def _build_provider(model_string: str, suite: Suite, cache_dir: Path, *, write_cache: bool):
@@ -99,9 +122,13 @@ def run(
             help="provider/model, e.g. ollama/qwen2.5:7b, replay/any, fake/demo.",
         ),
     ],
-    cache_dir: Annotated[Path, typer.Option(help="Completion cache directory.")] = Path(
-        DEFAULT_CACHE
-    ),
+    cache_dir: Annotated[
+        Path | None,
+        typer.Option(
+            help="Completion cache directory. Default: cache/ci for replay/ models, "
+            "the gitignored cache/local for everything else."
+        ),
+    ] = None,
     db: Annotated[Path, typer.Option(help="SQLite results database.")] = Path(DEFAULT_DB),
     limit: Annotated[
         int | None, typer.Option(help="Only run the first N cases (smoke test).")
@@ -128,6 +155,8 @@ def run(
     except ValueError as e:
         _fail(str(e))
 
+    if cache_dir is None:
+        cache_dir = _default_cache_dir(model)
     provider, model_name = _build_provider(model, suite, cache_dir, write_cache=not no_cache_write)
     try:
         grader = make_grader(suite.grader)

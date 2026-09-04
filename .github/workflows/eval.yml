@@ -41,6 +41,10 @@ jobs:
 
       - name: Run baseline (main's suite against the committed cache)
         run: |
+          # pipefail: `promptci run` exits non-zero when cases error, and without it
+          # `| tee` would mask that. A run where every case errored still scores 0.000,
+          # so the compare below would report "no detectable change" and pass the gate.
+          set -o pipefail
           git worktree add /tmp/main origin/main
           promptci run /tmp/main/examples/json_extract/suite.yaml \
             --model replay/any --cache-dir cache/ci --db /tmp/eval.db --label baseline --json \
@@ -48,6 +52,7 @@ jobs:
 
       - name: Run candidate (this PR's suite against the committed cache)
         run: |
+          set -o pipefail
           promptci run examples/json_extract/suite.yaml \
             --model replay/any --cache-dir cache/ci --db /tmp/eval.db --label candidate --json \
             | tee /tmp/candidate.json

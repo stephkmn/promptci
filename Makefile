@@ -24,6 +24,7 @@ demo:
 
 # Regenerate the committed demo cache from the deterministic fake provider.
 # Only needed if you change the json_extract prompt or its fake_responses.
+# --cache-dir is explicit because fake/demo defaults to the gitignored cache/local.
 demo-cache:
 	rm -rf cache/ci
 	promptci run examples/json_extract/suite.yaml --model fake/demo --cache-dir cache/ci --db /tmp/promptci-demo-cache.db

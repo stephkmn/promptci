@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
-from promptci.cache.disk import CachedProvider, DiskCache
-from promptci.cli import app
+from promptci.cache.disk import CachedProvider, DiskCache, _canonical_params
+from promptci.cli import (
+    DEFAULT_CACHE_LOCAL,
+    DEFAULT_CACHE_REPLAY,
+    _default_cache_dir,
+    app,
+)
 from promptci.graders import make_grader
 from promptci.providers.base import ProviderError
 from promptci.providers.fake import FakeProvider
@@ -118,6 +125,46 @@ def test_cli_demo_replays_from_committed_cache(tmp_path):
     cmp = runner.invoke(app, ["compare", run_id, run_id, "--db", str(db), "--resamples", "500"])
     assert cmp.exit_code == 0, cmp.output
     assert "no detectable change" in cmp.output
+
+
+@pytest.mark.parametrize(
+    ("model_string", "expected"),
+    [
+        ("replay/any", DEFAULT_CACHE_REPLAY),
+        ("replay/ollama/qwen2.5:7b", DEFAULT_CACHE_REPLAY),
+        ("ollama/qwen2.5:7b", DEFAULT_CACHE_LOCAL),
+        ("fake/demo", DEFAULT_CACHE_LOCAL),
+        ("anthropic/claude-3-5-haiku-latest", DEFAULT_CACHE_LOCAL),
+    ],
+)
+def test_default_cache_dir_keeps_real_models_out_of_the_fixture(model_string, expected):
+    """`replay/` defaults to the committed fixture; anything else to the gitignored dir.
+
+    Two properties at once: the zero-setup demo works in a fresh clone with no flags
+    (which needs `cache/ci`, since `cache/local` is gitignored and absent there), and a
+    real model run cannot land in the fixture. Both matter because `replay/any` raises
+    on a prompt recorded by two models, which breaks the demo.
+    """
+    assert _default_cache_dir(model_string) == Path(expected)
+
+
+def test_committed_cache_has_one_provider_per_prompt():
+    """`replay/any` needs each (params, prompt) in `cache/ci` recorded by exactly one model.
+
+    Guards the ambiguity directly rather than through the demo: a second provider's
+    entry for a prompt already in the fixture makes `replay/any` raise on that case.
+    """
+    by_request: dict[tuple[str, str], list[str]] = {}
+    for entry_path in (REPO / "cache" / "ci").glob("*/*.json"):
+        req = json.loads(entry_path.read_text(encoding="utf-8"))["request"]
+        key = (_canonical_params(req.get("params", {})), req["prompt"])
+        by_request.setdefault(key, []).append(f"{req['provider']}/{req['model']}")
+
+    assert by_request, "committed cache is empty"
+    ambiguous = {
+        prompt[:60]: sorted(models) for (_, prompt), models in by_request.items() if len(models) > 1
+    }
+    assert not ambiguous, f"prompts recorded by more than one model: {ambiguous}"
 
 
 def test_cli_replay_miss_exits_nonzero(tmp_path):
