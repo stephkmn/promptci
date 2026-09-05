@@ -93,6 +93,13 @@ async def test_runner_retries_then_records_error(tmp_path):
     assert store.summarize(run.run_id).n_errors == 1
 
 
+def test_runner_config_rejects_negative_max_retries():
+    """A negative value would skip the retry loop and trip the assert after it."""
+    with pytest.raises(ValueError, match="max_retries must be >= 0"):
+        RunnerConfig(max_retries=-1)
+    assert RunnerConfig(max_retries=0).max_retries == 0  # zero means "try once"
+
+
 def test_cli_demo_replays_from_committed_cache(tmp_path):
     """`promptci run examples/json_extract/suite.yaml --model replay/any` from cache/ci."""
     runner = CliRunner()

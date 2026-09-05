@@ -26,11 +26,23 @@ from promptci.suite.schema import Case, Suite, render_prompt
 
 @dataclass
 class RunnerConfig:
+    """Execution knobs for one `Runner`.
+
+    `max_retries` is the number of *extra* attempts after the first, so 0 means try
+    once and give up. It is validated because a negative value would skip the retry
+    loop in `_complete_with_retries` entirely and trip the invariant assert after it;
+    failing here names the bad setting instead of surfacing mid-run as a per-case error.
+    """
+
     concurrency: int = 4
     max_retries: int = 3
     backoff_base_s: float = 1.0
     per_case_timeout_s: float = 300.0
     seed: int = 0
+
+    def __post_init__(self) -> None:
+        if self.max_retries < 0:
+            raise ValueError(f"max_retries must be >= 0, got {self.max_retries}")
 
 
 ProgressCallback = Callable[[ResultRecord], None]
