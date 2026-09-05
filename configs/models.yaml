@@ -1,14 +1,17 @@
 # Model strings used in the milestone experiments. One place to change them.
 #
-# Pick the two Ollama models after checking your hardware:
-#   8 GB RAM/VRAM:  qwen2.5:3b and llama3.2:3b
-#   16 GB:          qwen2.5:7b and llama3.1:8b  (or llama3.2:3b as the small one)
-#   32 GB+:         qwen2.5:14b as the "stronger judge" in M4
-# Pull with `ollama pull <name>`.
+# Chosen 2026-09-05 on MacBook Pro M5, 16 GB unified memory
+# Hand-timed one warm /api/generate call (GSM8K prompt, stream=false), second call
+# so weights were already loaded:
+#   qwen2.5:7b  4.07s (140 prompt, 99 completion)
+#   llama3.2:3b  2.42s (135 prompt, 122 completion)
+# At --concurrency 1 that puts GSM8K-200 at roughly 14 min and 8 min per model.
+# Picked a 7B and a 3B so the two runs differ in size by enough to show a real
+# quality-vs-latency tradeoff, and both fit in memory without swapping.
 
 candidates:
-  primary: ollama/qwen2.5:7b
-  secondary: ollama/llama3.2:3b
+  primary: ollama/qwen2.5:7b      # stronger; the one I expect to recommend deploying
+  secondary: ollama/llama3.2:3b   # small/fast contrast
 
 judges:
   small: ollama/qwen2.5:7b
