@@ -133,7 +133,7 @@ def run(
     limit: Annotated[
         int | None, typer.Option(help="Only run the first N cases (smoke test).")
     ] = None,
-    concurrency: Annotated[int, typer.Option(help="Parallel requests.")] = 4,
+    concurrency: Annotated[int, typer.Option(min=1, help="Parallel requests.")] = 4,
     label: Annotated[
         str | None, typer.Option(help="Free-text label stored with the run, e.g. 'cot-prompt'.")
     ] = None,

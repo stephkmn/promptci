@@ -93,11 +93,38 @@ async def test_runner_retries_then_records_error(tmp_path):
     assert store.summarize(run.run_id).n_errors == 1
 
 
-def test_runner_config_rejects_negative_max_retries():
-    """A negative value would skip the retry loop and trip the assert after it."""
+def test_runner_config_rejects_bad_max_retries_and_concurrency():
+    """Bad values fail at construction, not confusingly mid-run.
+
+    A negative max_retries would skip the retry loop and trip the assert after it; a
+    concurrency below 1 would build a semaphore no case can acquire and hang forever.
+    """
     with pytest.raises(ValueError, match="max_retries must be >= 0"):
         RunnerConfig(max_retries=-1)
     assert RunnerConfig(max_retries=0).max_retries == 0  # zero means "try once"
+    for bad in (0, -1):
+        with pytest.raises(ValueError, match="concurrency must be >= 1"):
+            RunnerConfig(concurrency=bad)
+    assert RunnerConfig(concurrency=1).concurrency == 1
+
+
+def test_cli_rejects_zero_concurrency(tmp_path):
+    """`--concurrency 0` is a usage error, not a hung run."""
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            str(EXAMPLES / "json_extract" / "suite.yaml"),
+            "--model",
+            "replay/any",
+            "--concurrency",
+            "0",
+            "--db",
+            str(tmp_path / "x.db"),
+        ],
+    )
+    assert result.exit_code == 2
+    assert "concurrency" in result.output
 
 
 def test_cli_demo_replays_from_committed_cache(tmp_path):

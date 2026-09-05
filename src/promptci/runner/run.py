@@ -29,9 +29,14 @@ class RunnerConfig:
     """Execution knobs for one `Runner`.
 
     `max_retries` is the number of *extra* attempts after the first, so 0 means try
-    once and give up. It is validated because a negative value would skip the retry
-    loop in `_complete_with_retries` entirely and trip the invariant assert after it;
-    failing here names the bad setting instead of surfacing mid-run as a per-case error.
+    once and give up. `concurrency` is how many cases may be in flight at once.
+
+    Both are validated in `__post_init__` because a bad value fails confusingly and
+    late rather than loudly: a negative `max_retries` skips the retry loop in
+    `_complete_with_retries` and trips the invariant assert after it, and a
+    `concurrency` below 1 builds a semaphore no case can ever acquire, hanging the
+    run forever with no output. Raising here names the bad setting before any model
+    is called.
     """
 
     concurrency: int = 4
@@ -41,6 +46,8 @@ class RunnerConfig:
     seed: int = 0
 
     def __post_init__(self) -> None:
+        if self.concurrency < 1:
+            raise ValueError(f"concurrency must be >= 1, got {self.concurrency}")
         if self.max_retries < 0:
             raise ValueError(f"max_retries must be >= 0, got {self.max_retries}")
 
