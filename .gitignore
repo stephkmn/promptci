@@ -17,6 +17,7 @@ venv/
 # Downloaded datasets (the download scripts recreate them)
 examples/*/cases.jsonl
 examples/humaneval/data/
+examples/*/case_ids.txt
 
 # Results database is committed on purpose when it backs a reported number
 # (see CLAUDE.md), but journal/lock files are not.
