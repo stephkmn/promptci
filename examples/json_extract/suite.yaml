@@ -35,6 +35,9 @@ params:
   temperature: 0.0
   max_tokens: 200
 
+dataset:
+  cases.jsonl
+
 grader:
   type: json_schema
   compare_expected: true
