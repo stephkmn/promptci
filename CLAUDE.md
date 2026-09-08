@@ -15,7 +15,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q                          # must pass before and after every change
 ruff check . && ruff format --check .
-promptci run examples/json_extract/suite.yaml --model replay/any     # zero-setup demo
+promptci run examples/json_extract/suite.yaml --model replay/any --limit 12   # zero-setup demo
 promptci run examples/json_extract/suite.yaml --model ollama/qwen2.5:7b
 ```
 

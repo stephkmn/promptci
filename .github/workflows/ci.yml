@@ -27,4 +27,7 @@ jobs:
         run: pytest -q
       - name: Demo replays from committed cache
         run: |
-          promptci run examples/json_extract/suite.yaml --model replay/any --db /tmp/ci.db --json
+          # --limit 12 selects the inline cases, the only ones cache/ci recorded. The 60
+          # in cases.jsonl are for real model runs and would miss the replay cache.
+          promptci run examples/json_extract/suite.yaml --model replay/any --limit 12 \
+            --db /tmp/ci.db --json

@@ -9,7 +9,7 @@ Think of it as pytest for prompts and models.
 
 ```
 pip install -e ".[dev]"
-promptci run examples/json_extract/suite.yaml --model replay/any      # zero-setup demo
+promptci run examples/json_extract/suite.yaml --model replay/any --limit 12   # zero-setup demo
 promptci run examples/json_extract/suite.yaml --model ollama/qwen2.5:7b
 promptci compare <run_a> <run_b>
 ```
@@ -81,14 +81,16 @@ Python 3.11 or newer.
 git clone https://github.com/[YOUR_GITHUB]/promptci && cd promptci
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest -q                                              # 62 passed, 5 xfailed (planned work)
-promptci run examples/json_extract/suite.yaml --model replay/any
+pytest -q                                              # 65 passed, 5 xfailed (planned work)
+promptci run examples/json_extract/suite.yaml --model replay/any --limit 12
 ```
 
 The last command replays 12 cases from `cache/ci/` in under a second and prints a
 summary table. `cache/ci/` is the committed replay fixture and holds fake-provider
-replies only, so this is a demo of the pipeline, not a measurement of any model. To
-measure a model:
+replies only, so this is a demo of the pipeline, not a measurement of any model.
+`--limit 12` selects the suite's inline cases, which are the only ones the fixture
+recorded; the 60 in `cases.jsonl` are there for real model runs and would miss the
+replay cache. To measure a model:
 
 ```bash
 ollama pull qwen2.5:7b
@@ -167,7 +169,7 @@ which is what `.github/workflows/eval.yml` uses.
 
 | suite | grader | data |
 |---|---|---|
-| `examples/json_extract` | json_schema + field match | 12 hand-written cases inline (M1 extends to 60) |
+| `examples/json_extract` | json_schema + field match | 12 hand-written cases inline plus 60 in `cases.jsonl`; the demo replays the inline 12 |
 | `examples/gsm8k` | exact with `#### N` extraction | 5 inline; `download.py` fetches a seeded 200-item test subset |
 | `examples/humaneval` | code_exec (M3) | 1 inline; `download.py` fetches all 164 |
 | `examples/summarize_judge` | llm_judge (M4) | 5 short passages inline |

@@ -85,7 +85,7 @@ package is installable from PyPI, the README has badges and a demo GIF, and
 - `eval.yml` runs with no network access to any model provider (verify: the job's
   log shows 100 percent cache hit rate for each suite).
 - `pip install promptci` in a fresh venv works and `promptci run
-  examples/json_extract/suite.yaml --model replay/any` works from a clone.
+  examples/json_extract/suite.yaml --model replay/any --limit 12` works from a clone.
 - `docs/demo.gif` exists, under 5 MB, embedded in README.
 - `docs/WRITEUP.md` exists; every number in it appears in a file under `results/`.
 - README badges render (CI, eval, PyPI, Python, license).

@@ -17,8 +17,14 @@ def test_json_extract_suite_loads(json_extract_suite):
     assert s.grader.type == "json_schema"
     assert s.params.as_dict() == {"temperature": 0.0, "max_tokens": 200}
     assert len({c.id for c in s.cases}) == len(s.cases)
-    # every case has a demo reply so the zero-setup demo covers the whole suite
-    assert set(s.fake_responses) == {c.id for c in s.cases}
+    # The zero-setup demo replays the 12 inline cases only (`--limit 12`); the 60 in
+    # cases.jsonl are for real model runs and have no recorded reply. Keys must still
+    # name real cases, so a typo in the block fails here.
+    demo_ids = {f"c{i:03d}" for i in range(1, 13)}
+    assert set(s.fake_responses) <= {c.id for c in s.cases}
+    assert set(s.fake_responses) == demo_ids
+    # `--limit 12` slices cases in load order, so the demo subset has to be the first 12.
+    assert {c.id for c in s.cases[:12]} == demo_ids
 
 
 def test_render_prompt_substitutes_inputs(json_extract_suite):
@@ -72,9 +78,12 @@ def test_dataset_jsonl_is_merged_and_limit_applies(tmp_path):
     assert len(load_suite(tmp_path / "suite.yaml", limit=2).cases) == 2
 
 
-def test_missing_dataset_gives_clear_error():
+def test_missing_dataset_gives_clear_error(tmp_path):
+    # Copied into an empty directory so the result does not depend on whether the real
+    # example's dataset happens to be downloaded on this machine.
+    shutil.copy(EXAMPLES / "gsm8k" / "suite.yaml", tmp_path / "suite.yaml")
     with pytest.raises(FileNotFoundError, match="download"):
-        load_suite(EXAMPLES / "gsm8k" / "suite.yaml")
+        load_suite(tmp_path / "suite.yaml")
 
 
 @pytest.mark.parametrize("name", ["json_extract", "humaneval", "summarize_judge"])

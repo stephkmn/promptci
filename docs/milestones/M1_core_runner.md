@@ -80,7 +80,8 @@ latency, tokens) that you produced and can explain line by line.
 ## Acceptance criteria
 
 - `pytest -q` passes; `ruff check .` and `ruff format --check .` pass.
-- `examples/json_extract/` has 60 cases; `promptci validate` reports 60.
+- `examples/json_extract/` has 60 cases in `cases.jsonl` on top of the 12 shipped
+  inline; `promptci validate` reports 72.
 - `examples/gsm8k/case_ids.txt` has 200 ids and is committed; `cases.jsonl` is not.
 - `promptci runs` lists at least 4 finished runs: 2 models x 2 suites, each with
   `n_errors` at most 2 percent of cases.

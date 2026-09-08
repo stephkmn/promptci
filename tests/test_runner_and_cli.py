@@ -30,7 +30,11 @@ from tests.conftest import EXAMPLES, REPO
 
 @pytest.mark.asyncio
 async def test_runner_end_to_end_with_fake(tmp_path, json_extract_suite):
-    suite = json_extract_suite
+    # Only the inline cases have recorded demo replies, so run that subset. This is the
+    # `--limit 12` the CLI demo uses, expressed against the loaded suite.
+    full = json_extract_suite
+    demo_cases = [c for c in full.cases if c.id in full.fake_responses]
+    suite = full.model_copy(update={"cases": demo_cases})
     replies = {render_prompt(suite, c): suite.fake_responses[c.id] for c in suite.cases}
     provider = CachedProvider(FakeProvider(responses=replies), DiskCache(tmp_path / "cache"))
     store = ResultStore(tmp_path / "r.db")
@@ -128,7 +132,11 @@ def test_cli_rejects_zero_concurrency(tmp_path):
 
 
 def test_cli_demo_replays_from_committed_cache(tmp_path):
-    """`promptci run examples/json_extract/suite.yaml --model replay/any` from cache/ci."""
+    """`promptci run examples/json_extract/suite.yaml --model replay/any --limit 12`.
+
+    `--limit 12` selects the inline cases, the only ones `cache/ci/` recorded. A
+    full-suite replay misses on the 60 in cases.jsonl.
+    """
     runner = CliRunner()
     db = tmp_path / "demo.db"
     result = runner.invoke(
@@ -142,6 +150,8 @@ def test_cli_demo_replays_from_committed_cache(tmp_path):
             str(REPO / "cache" / "ci"),
             "--db",
             str(db),
+            "--limit",
+            "12",
             "--json",
         ],
     )
@@ -217,6 +227,8 @@ def test_run_records_a_clean_sha_when_the_db_lives_in_the_repo(tmp_path, monkeyp
     repo = tmp_path / "repo"
     (repo / "examples" / "json_extract").mkdir(parents=True)
     shutil.copy(EXAMPLES / "json_extract" / "suite.yaml", repo / "examples" / "json_extract")
+    # The suite declares `dataset: cases.jsonl`, so the fixture needs it to load at all.
+    shutil.copy(EXAMPLES / "json_extract" / "cases.jsonl", repo / "examples" / "json_extract")
     shutil.copytree(REPO / "cache" / "ci", repo / "cache" / "ci")
 
     def run_git(*args: str) -> None:
@@ -245,6 +257,8 @@ def test_run_records_a_clean_sha_when_the_db_lives_in_the_repo(tmp_path, monkeyp
             "cache/ci",
             "--db",
             str(db),
+            "--limit",
+            "12",
             "--json",
         ],
     )
@@ -278,7 +292,7 @@ def test_cli_replay_miss_exits_nonzero(tmp_path):
 def test_cli_validate(tmp_path):
     runner = CliRunner()
     r = runner.invoke(app, ["validate", str(EXAMPLES / "json_extract" / "suite.yaml")])
-    assert r.exit_code == 0 and "12 cases" in r.output
+    assert r.exit_code == 0 and "72 cases" in r.output
 
 
 def test_console_script_is_installed():

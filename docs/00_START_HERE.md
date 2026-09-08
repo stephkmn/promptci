@@ -37,9 +37,9 @@ publish it. Each milestone in `docs/milestones/` is a self-contained task prompt
    cd promptci
    python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
    pip install -e ".[dev]"
-   pytest -q                    # expect: 56 passed, 5 xfailed (the xfails are planned work)
+   pytest -q                    # expect: 65 passed, 5 xfailed (the xfails are planned work)
    ruff check .
-   promptci run examples/json_extract/suite.yaml --model replay/any
+   promptci run examples/json_extract/suite.yaml --model replay/any --limit 12
    ```
 
    The last command prints a summary table in under a second. It is replaying cached

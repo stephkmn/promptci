@@ -47,14 +47,16 @@ jobs:
           set -o pipefail
           git worktree add /tmp/main origin/main
           promptci run /tmp/main/examples/json_extract/suite.yaml \
-            --model replay/any --cache-dir cache/ci --db /tmp/eval.db --label baseline --json \
+            --model replay/any --cache-dir cache/ci --limit 12 \
+            --db /tmp/eval.db --label baseline --json \
             | tee /tmp/baseline.json
 
       - name: Run candidate (this PR's suite against the committed cache)
         run: |
           set -o pipefail
           promptci run examples/json_extract/suite.yaml \
-            --model replay/any --cache-dir cache/ci --db /tmp/eval.db --label candidate --json \
+            --model replay/any --cache-dir cache/ci --limit 12 \
+            --db /tmp/eval.db --label candidate --json \
             | tee /tmp/candidate.json
 
       - name: Compare
