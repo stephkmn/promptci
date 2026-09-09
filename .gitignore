@@ -34,3 +34,6 @@ cache/*
 .DS_Store
 .idea/
 .vscode/
+
+# Local scratch files (failure dumps, one-off scripts). Never committed.
+scratch/
