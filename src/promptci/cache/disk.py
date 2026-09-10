@@ -22,6 +22,7 @@ import hashlib
 import json
 import os
 import tempfile
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,93 @@ def cache_key(provider: str, model: str, params: dict[str, Any], prompt: str) ->
         h.update(b"\0")
         h.update(b)
     return h.hexdigest()
+
+
+UNKNOWN = "?"
+"""Provider/model shown for an entry whose request could not be read."""
+
+
+@dataclass(frozen=True)
+class CacheGroup:
+    """Entry count and on-disk size for one (provider, model) pair in a cache directory."""
+
+    provider: str
+    model: str
+    entries: int
+    total_bytes: int
+
+
+@dataclass(frozen=True)
+class CacheStats:
+    """What a cache directory holds: totals plus a per-(provider, model) breakdown.
+
+    `total_bytes` is the size of the entry files on disk, unreadable ones included.
+    `unreadable` counts entries whose request could not be parsed; they are reported
+    rather than raised so one bad file cannot hide the rest, which matches
+    `DiskCache.get` treating a corrupt entry as a miss. Those entries are grouped
+    under provider and model `UNKNOWN`.
+    """
+
+    root: Path
+    entries: int
+    total_bytes: int
+    unreadable: int
+    groups: list[CacheGroup]
+
+    def as_dict(self) -> dict[str, Any]:
+        """JSON-ready form for `promptci cache stats --json`. Sizes stay in raw bytes."""
+        d = asdict(self)
+        d["root"] = str(self.root)
+        return d
+
+
+def read_cache_stats(root: str | Path) -> CacheStats:
+    """Count and group the entries under `root`, creating and writing nothing.
+
+    Deliberately a function on a path rather than only a `DiskCache` method: the
+    constructor creates its root directory, and inspecting a cache must not bring one
+    into being. A missing directory reports zero entries instead of raising, so the
+    caller decides whether "nothing cached yet" is an error.
+
+    Every entry file is opened, because the provider and model are inside the JSON and
+    not in the path. That is O(entries) and fine at the sizes this cache reaches; if a
+    cache ever grows to where it is not, the fix is an index, not a guess from the path.
+    """
+    root = Path(root)
+    counts: dict[tuple[str, str], list[int]] = {}
+    entries = 0
+    total_bytes = 0
+    unreadable = 0
+    for path in root.glob("*/*.json"):
+        entries += 1
+        try:
+            size = path.stat().st_size
+        except OSError:
+            size = 0
+        total_bytes += size
+        provider, model = UNKNOWN, UNKNOWN
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                request = json.load(f)["request"]
+            provider, model = str(request["provider"]), str(request["model"])
+        except (OSError, ValueError, KeyError, TypeError):
+            # Same tolerance as `get`: a corrupt or foreign file is counted, not fatal.
+            unreadable += 1
+        slot = counts.setdefault((provider, model), [0, 0])
+        slot[0] += 1
+        slot[1] += size
+    groups = [
+        CacheGroup(provider=p, model=m, entries=n, total_bytes=b)
+        for (p, m), (n, b) in counts.items()
+    ]
+    groups.sort(key=lambda g: (-g.entries, g.provider, g.model))
+    return CacheStats(
+        root=root,
+        entries=entries,
+        total_bytes=total_bytes,
+        unreadable=unreadable,
+        groups=groups,
+    )
 
 
 class DiskCache:
@@ -125,6 +213,10 @@ class DiskCache:
 
     def keys(self) -> list[str]:
         return sorted(p.stem for p in self.root.glob("*/*.json"))
+
+    def stats(self) -> CacheStats:
+        """Entries, size, and the (provider, model) breakdown for this cache."""
+        return read_cache_stats(self.root)
 
 
 class CachedProvider:

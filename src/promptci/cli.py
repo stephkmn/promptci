@@ -5,6 +5,7 @@
     promptci runs                                    list recent runs
     promptci compare RUN_A RUN_B                     paired comparison with CI
     promptci validate SUITE                          check a suite file loads
+    promptci cache stats                             what the completion cache holds
 
 Every completion goes through the disk cache. Which directory depends on the provider
 unless ``--cache-dir`` says otherwise: ``replay/...`` reads ``cache/ci``, the committed
@@ -30,7 +31,7 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn, T
 from rich.table import Table
 
 from promptci import __version__
-from promptci.cache.disk import CachedProvider, DiskCache
+from promptci.cache.disk import CachedProvider, DiskCache, read_cache_stats
 from promptci.graders import make_grader
 from promptci.providers import make_provider
 from promptci.providers.base import ProviderError, parse_model_string
@@ -48,6 +49,11 @@ app = typer.Typer(
     no_args_is_help=True,
     add_completion=False,
 )
+cache_app = typer.Typer(
+    help="Inspect the completion cache.",
+    no_args_is_help=True,
+)
+app.add_typer(cache_app, name="cache")
 console = Console()
 err_console = Console(stderr=True)
 
@@ -77,6 +83,21 @@ def _main(
 def _fail(msg: str, code: int = 1) -> None:
     err_console.print(f"[red]error:[/red] {msg}")
     raise typer.Exit(code)
+
+
+def _format_bytes(n: int) -> str:
+    """Size for a human reading a table. Powers of 1024, since that is what `du` reports.
+
+    The JSON output keeps raw bytes; only the table is rounded.
+    """
+    if n < 1024:
+        return f"{n} B"
+    size = n / 1024
+    for unit in ("KB", "MB"):
+        if size < 1024:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} GB"
 
 
 def _default_cache_dir(model_string: str) -> Path:
@@ -367,6 +388,56 @@ def validate(
         f"[green]ok[/green] {suite.name}: {len(suite.cases)} cases, grader {suite.grader.type}, "
         f"hash {suite.content_hash()}"
     )
+
+
+@cache_app.command("stats")
+def cache_stats(
+    cache_dir: Annotated[
+        Path,
+        typer.Option(
+            help="Cache directory to inspect. Default: the gitignored cache/local, where "
+            "real model runs are recorded. Pass cache/ci for the committed replay fixture."
+        ),
+    ] = Path(DEFAULT_CACHE_LOCAL),
+    json_out: Annotated[
+        bool, typer.Option("--json", help="Print raw byte counts as JSON instead of a table.")
+    ] = False,
+) -> None:
+    """Show how many completions a cache holds, its size, and which models recorded them.
+
+    Unlike `run`, there is no model string here to pick a default directory from, so
+    this defaults to `cache/local`: the fixture in `cache/ci` is small, committed, and
+    already visible in git, while what accumulates unseen is the local one.
+    """
+    if not cache_dir.is_dir():
+        _fail(
+            f"no cache directory at {cache_dir}. Nothing has been cached there yet, or the "
+            f"path is wrong; the committed fixture is {DEFAULT_CACHE_REPLAY}."
+        )
+    stats = read_cache_stats(cache_dir)
+
+    if json_out:
+        # plain stdout, not rich, so `promptci cache stats --json | jq` works
+        sys.stdout.write(json.dumps(stats.as_dict(), indent=2) + "\n")
+        return
+
+    t = Table(title=f"cache {cache_dir}", show_header=True)
+    t.add_column("Provider")
+    t.add_column("Model")
+    t.add_column("Entries", justify="right")
+    t.add_column("Size", justify="right")
+    for g in stats.groups:
+        t.add_row(g.provider, g.model, str(g.entries), _format_bytes(g.total_bytes))
+    t.add_section()
+    t.add_row("TOTAL", "", str(stats.entries), _format_bytes(stats.total_bytes))
+    console.print(t)
+    if stats.entries == 0:
+        console.print("cache is empty")
+    if stats.unreadable:
+        err_console.print(
+            f"[yellow]{stats.unreadable} entr(y/ies) could not be read[/yellow] and are listed "
+            "as '?'. Each one is a cache miss the next time it is requested, then overwritten."
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

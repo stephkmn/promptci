@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from promptci.cache.disk import CachedProvider, DiskCache, _canonical_params
+from promptci.cache.disk import CachedProvider, DiskCache, _canonical_params, cache_key
 from promptci.cli import (
     DEFAULT_CACHE_LOCAL,
     DEFAULT_CACHE_REPLAY,
@@ -20,7 +20,7 @@ from promptci.cli import (
     app,
 )
 from promptci.graders import make_grader
-from promptci.providers.base import ProviderError
+from promptci.providers.base import Completion, ProviderError
 from promptci.providers.fake import FakeProvider
 from promptci.runner.run import Runner, RunnerConfig
 from promptci.store.sqlite import ResultStore
@@ -317,3 +317,67 @@ def test_module_entrypoint():
         timeout=30,
     )
     assert out.returncode == 0 and "promptci" in out.stdout
+
+
+def _seed_cache(root: Path) -> DiskCache:
+    """A cache holding two models' worth of entries, for the `cache stats` tests."""
+    cache = DiskCache(root)
+    for provider, model, prompt in (
+        ("ollama", "qwen2.5:7b", "one"),
+        ("ollama", "qwen2.5:7b", "two"),
+        ("fake", "demo", "one"),
+    ):
+        cache.put(
+            cache_key(provider, model, {}, prompt),
+            Completion(text="out", prompt_tokens=1, completion_tokens=1, latency_ms=1.0),
+            provider=provider,
+            model=model,
+            params={},
+            prompt=prompt,
+        )
+    return cache
+
+
+def test_cli_cache_stats_breaks_down_by_provider_and_model(tmp_path):
+    """`promptci cache stats --cache-dir DIR`, as a table and as JSON."""
+    root = tmp_path / "c"
+    _seed_cache(root)
+    runner = CliRunner()
+
+    as_json = runner.invoke(app, ["cache", "stats", "--cache-dir", str(root), "--json"])
+    assert as_json.exit_code == 0, as_json.output
+    data = json.loads(as_json.output)
+    assert data["root"] == str(root)
+    assert data["entries"] == 3
+    assert data["unreadable"] == 0
+    assert data["total_bytes"] > 0
+    assert {(g["provider"], g["model"], g["entries"]) for g in data["groups"]} == {
+        ("ollama", "qwen2.5:7b", 2),
+        ("fake", "demo", 1),
+    }
+
+    table = runner.invoke(app, ["cache", "stats", "--cache-dir", str(root)])
+    assert table.exit_code == 0, table.output
+    assert "qwen2.5:7b" in table.output
+    assert "TOTAL" in table.output
+
+
+def test_cli_cache_stats_missing_dir_exits_nonzero_and_creates_nothing(tmp_path):
+    """A typo in `--cache-dir` must be an error, not an empty table beside a new directory."""
+    missing = tmp_path / "not-there"
+    result = CliRunner().invoke(app, ["cache", "stats", "--cache-dir", str(missing)])
+    assert result.exit_code == 1
+    assert "no cache directory" in result.output
+    assert not missing.exists()
+
+
+def test_cli_cache_stats_reads_the_committed_fixture():
+    """The fixture is fake-provider replies only; `cache stats` is how that is checked."""
+    result = CliRunner().invoke(
+        app, ["cache", "stats", "--cache-dir", str(REPO / "cache" / "ci"), "--json"]
+    )
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.output)
+    assert data["entries"] == len(DiskCache(REPO / "cache" / "ci"))
+    assert data["unreadable"] == 0
+    assert {g["provider"] for g in data["groups"]} == {"fake"}

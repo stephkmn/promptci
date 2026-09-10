@@ -81,7 +81,7 @@ Python 3.11 or newer.
 git clone https://github.com/[YOUR_GITHUB]/promptci && cd promptci
 python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-pytest -q                                              # 65 passed, 5 xfailed (planned work)
+pytest -q                                              # 75 passed, 5 xfailed (planned work)
 promptci run examples/json_extract/suite.yaml --model replay/any --limit 12
 ```
 
@@ -109,6 +109,15 @@ you recorded locally needs it, since the entries are not in the fixture:
 ```bash
 promptci run examples/json_extract/suite.yaml \
   --model replay/ollama/qwen2.5:7b --cache-dir cache/local
+```
+
+`promptci cache stats` shows what a cache directory holds: entries, size on disk, and
+which models recorded them. It defaults to `cache/local`, the one that grows unseen,
+and takes `--cache-dir` for any other and `--json` for scripting.
+
+```bash
+promptci cache stats                        # what the local runs recorded
+promptci cache stats --cache-dir cache/ci   # the committed fixture: fake/demo only
 ```
 
 ## Writing a suite
