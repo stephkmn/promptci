@@ -134,6 +134,8 @@ def test_json_schema_demo_responses_grade_as_documented(json_extract_suite):
 
 # -- numeric -------------------------------------------------------------------
 
+GSM8K_PATTERN = r"####\s*\$?(-?[\d,]*\.?\d+)"
+
 
 def test_numeric_tolerance():
     g = NumericToleranceGrader(abs_tol=0.01)
@@ -142,6 +144,38 @@ def test_numeric_tolerance():
     assert g.grade("no digits", Case(id="a", expected=1)).passed is False
     rel = NumericToleranceGrader(rel_tol=0.05)
     assert rel.grade("104", Case(id="a", expected=100)).passed is True
+
+
+def test_numeric_grades_decimal_form_of_an_integer():
+    """An output of "#### 6.00" is right when the case expects "6".
+
+    This is why gsm8k uses numeric_tolerance and not exact: string equality scored
+    the decimal form as wrong.
+    """
+    g = NumericToleranceGrader(extract=GSM8K_PATTERN)
+    c = Case(id="a", expected="6")
+    assert g.grade("... so $4.00 + $2.00 = $6.00\n\n#### 6.00", c).passed is True
+    assert g.grade("#### 6", c).passed is True
+    assert g.grade("#### 7", c).passed is False
+
+
+def test_numeric_require_extract_match_fails_unformatted_output():
+    """A model that ignores the "#### N" instruction fails instead of being rescued
+    by the fallback scan of its prose."""
+    prose = "To find the discount, multiply the price. The answer is 70"
+    c = Case(id="a", expected="70")
+    lenient = NumericToleranceGrader(extract=GSM8K_PATTERN)
+    assert lenient.grade(prose, c).passed is True  # falls back to the last number
+    strict = NumericToleranceGrader(extract=GSM8K_PATTERN, require_extract_match=True)
+    r = strict.grade(prose, c)
+    assert r.passed is False
+    assert r.details["error"] == "output did not match the extract pattern"
+    assert strict.grade("#### 70", c).passed is True
+
+
+def test_numeric_require_extract_match_needs_a_pattern():
+    with pytest.raises(ValueError, match="require_extract_match"):
+        NumericToleranceGrader(require_extract_match=True)
 
 
 # -- registry and stubs ---------------------------------------------------------

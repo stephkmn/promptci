@@ -12,3 +12,13 @@ Rules (also in CLAUDE.md):
   and commit both the Markdown and the database.
 - Never edit the database by hand. If a run was wrong, run it again and reference the
   new run id.
+
+## GSM8K runs
+
+`gsm8k` was originally graded with `exact` (runs `d67e924ecc74` qwen2.5:7b and
+`ba27755a7098` llama3.2:3b, exported as `M1_gsm8k_*.md`). That grader compares strings,
+so it scored `#### 6.00` as wrong against expected `6`. The suite now uses
+`numeric_tolerance` with `require_extract_match: true`; the regraded replays are
+`c32af276cb40` and `443655ebfd66`, exported as `M1_gsm8k_*_numeric.md`.
+`M1_gsm8k_grader_change.md` has the reasoning and both before/after comparisons. The
+original runs are kept, not replaced — they are what `exact` measured.

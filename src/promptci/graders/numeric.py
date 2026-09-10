@@ -9,6 +9,12 @@ Options:
     extract: regex with one capture group to locate the number first (same idea as
         `exact`). Default: the last number-looking token in the output.
     use_last: when scanning for bare numbers, take the last one. Default true.
+    require_extract_match: if true, a case whose output does not match `extract` fails
+        outright instead of falling back to scanning the whole output. Use it when the
+        output format is part of what the suite grades: without it, a model that ignores
+        the requested format still passes on the last number in its prose, which quietly
+        turns a format failure into a pass. Requires `extract`. Default false, so the
+        grader keeps its lenient behaviour unless a suite asks for strictness.
 """
 
 from __future__ import annotations
@@ -37,13 +43,18 @@ class NumericToleranceGrader(Grader):
         self.rel_tol = float(options.get("rel_tol", 0.0))
         self.pattern: str | None = options.get("extract")
         self.use_last = bool(options.get("use_last", True))
+        self.require_extract_match = bool(options.get("require_extract_match", False))
+        if self.require_extract_match and not self.pattern:
+            raise ValueError("require_extract_match needs an `extract` pattern to require")
 
     def grade(self, output: str, case: Case) -> GradeResult:
         try:
             want = float(case.expected)
         except (TypeError, ValueError) as e:
             raise ValueError(f"case {case.id}: expected must be numeric") from e
-        text, _ = extract(output, self.pattern, last=self.use_last)
+        text, matched = extract(output, self.pattern, last=self.use_last)
+        if self.require_extract_match and not matched:
+            return GradeResult(0.0, False, {"error": "output did not match the extract pattern"})
         nums = _NUMBER.findall(text)
         if not nums:
             return GradeResult(0.0, False, {"error": "no number in output"})
@@ -54,5 +65,12 @@ class NumericToleranceGrader(Grader):
             return GradeResult(0.0, False, {"error": f"could not parse {raw!r}"})
         ok = math.isclose(got, want, rel_tol=self.rel_tol, abs_tol=self.abs_tol)
         return GradeResult(
-            1.0 if ok else 0.0, ok, {"got": got, "expected": want, "abs_error": abs(got - want)}
+            1.0 if ok else 0.0,
+            ok,
+            {
+                "got": got,
+                "expected": want,
+                "abs_error": abs(got - want),
+                "pattern_matched": matched,
+            },
         )

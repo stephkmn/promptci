@@ -1,4 +1,4 @@
-# GSM8K: grade-school math word problems, exact match on the final number.
+# GSM8K: grade-school math word problems, numeric match on the final answer.
 #
 # The full 200-case subset lives in cases.jsonl, which is NOT committed.
 # Create it with:  python examples/gsm8k/download.py --n 200 --seed 0
@@ -7,12 +7,17 @@
 #
 # Answer extraction: GSM8K's reference answers end with "#### <number>". The prompt
 # asks the model to use the same convention, and the grader pulls the last
-# "#### N" out of the output. If the model ignores the instruction the whole
-# output is graded and will almost certainly fail, which is the honest outcome:
-# "did not follow the output format" is a failure for a deployed system too.
+# "#### N" out of the output. If the model ignores the instruction the case fails
+# (require_extract_match), which is the honest outcome: "did not follow the output
+# format" is a failure for a deployed system too.
+#
+# The grader compares numbers, not strings. An exact-match grader scored "#### 6.00"
+# as wrong against expected "6", which is a formatting difference, not a wrong answer.
+# require_extract_match keeps the format rule strict while the tolerance handles the
+# value, so this change fixes decimal-vs-integer without forgiving format failures.
 
 name: gsm8k
-description: GSM8K test subset, exact match on the extracted final answer.
+description: GSM8K test subset, numeric match on the extracted final answer.
 
 prompt: |
   Solve the following math problem. Show your reasoning briefly, then write the
@@ -26,10 +31,11 @@ params:
   max_tokens: 512
 
 grader:
-  type: exact
+  type: numeric_tolerance
   extract: '####\s*\$?(-?[\d,]*\.?\d+)'
-  extract_last: true
-  normalize: [strip, remove_commas]
+  use_last: true
+  require_extract_match: true
+  abs_tol: 1.0e-6
 
 compare:
   regression_threshold: 0.03

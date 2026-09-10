@@ -138,7 +138,7 @@ Graders return a score in [0, 1] and, when it makes sense, a hard pass/fail:
 | `exact` | normalized string equality, with optional regex extraction (GSM8K `#### N`) | `normalize`, `extract`, `extract_last` |
 | `regex` | `re.search` match, optionally inverted | `pattern`, `flags`, `full_match`, `invert` |
 | `json_schema` | parses JSON out of prose, validates schema, field-level match vs `expected` | `schema`, `compare_expected`, `fields`, `extra_keys_penalty` |
-| `numeric_tolerance` | last number in output within tolerance | `abs_tol`, `rel_tol`, `extract` |
+| `numeric_tolerance` | number in output within tolerance; GSM8K uses it so `#### 6.00` matches `6` | `abs_tol`, `rel_tol`, `extract`, `use_last`, `require_extract_match` |
 | `code_exec` (M3) | runs candidate code against tests in a subprocess | `timeout_s`, `memory_mb` |
 | `llm_judge` (M4) | rubric-based 1-5 score from a separate judge model | `judge_model`, `rubric`, `pass_threshold` |
 | `pairwise_judge` (M4) | A vs B with order swap; reports position bias | `judge_model` |
